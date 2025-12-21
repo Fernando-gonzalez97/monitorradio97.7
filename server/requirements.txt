@@ -1,0 +1,22 @@
+# ===================================
+# Dependencias del Servidor
+# Monitor Radio 
+# ===================================
+
+# Framework web para API
+Flask==3.0.0
+
+# Cliente HTTP para hacer requests
+requests==2.31.0
+
+# Bot de Telegram
+python-telegram-bot==20.7
+
+# Manejo de fechas y tiempos
+python-dateutil==2.8.2
+
+# Variables de entorno (opcional)
+python-dotenv==1.0.0
+
+# WSGI server para producción (PythonAnywhere ya lo tiene)
+# gunicorn==21.2.0  # No necesario en PythonAnywhere
