@@ -13,7 +13,7 @@ STREAM_URL = "http://stream.lgcomunicaciones.com:8045/;stream/1"
 # ========================
 # URL del servidor donde enviar heartbeats
 # URL del servidro
-SERVER_URL = "https://fernandogonzalezz97.pythonanywhere.com/"
+SERVER_URL = "https://fernandogonzalezz97.pythonanywhere.com/heartbeat"
 
 # ========================
 # TELEGRAM (Alertas locales)

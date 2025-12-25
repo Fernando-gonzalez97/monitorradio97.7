@@ -4,7 +4,7 @@ Recibe heartbeats de la radio y muestra estado
 """
 
 from flask import Flask, request, jsonify, render_template
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import threading
 
 # Importar módulos propios
@@ -13,6 +13,9 @@ from utils import cargar_heartbeat, guardar_heartbeat, log_evento
 from monitor import monitor_conexion, resetear_alerta
 
 app = Flask(__name__)
+
+# Zona horaria Argentina (UTC-3)
+ARGENTINA_TZ = timezone(timedelta(hours=-3))
 
 # ========================
 # Rutas de la API
@@ -24,8 +27,9 @@ def index():
     ultimo = cargar_heartbeat()
     
     if ultimo:
-        timestamp = datetime.fromtimestamp(ultimo['timestamp'])
-        hace = int((datetime.now().timestamp() - ultimo['timestamp']))
+        # Convertir timestamp a hora de Argentina
+        timestamp = datetime.fromtimestamp(ultimo['timestamp'], tz=ARGENTINA_TZ)
+        hace = int((datetime.now(timezone.utc).timestamp() - ultimo['timestamp']))
         
         estado = {
             'online': hace < MAX_HEARTBEAT_TIMEOUT,
@@ -65,7 +69,7 @@ def recibir_heartbeat():
             return jsonify({
                 "status": "ok",
                 "mensaje": "Heartbeat recibido correctamente",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now(ARGENTINA_TZ).isoformat()
             }), 200
         else:
             return jsonify({"error": "Error guardando datos"}), 500
@@ -80,10 +84,12 @@ def obtener_estado():
     ultimo = cargar_heartbeat()
     
     if ultimo:
-        hace = int((datetime.now().timestamp() - ultimo['timestamp']))
+        hace = int((datetime.now(timezone.utc).timestamp() - ultimo['timestamp']))
+        timestamp = datetime.fromtimestamp(ultimo['timestamp'], tz=ARGENTINA_TZ)
+        
         estado = {
             "online": hace < MAX_HEARTBEAT_TIMEOUT,
-            "ultimo_heartbeat": datetime.fromtimestamp(ultimo['timestamp']).isoformat(),
+            "ultimo_heartbeat": timestamp.isoformat(),
             "hace_segundos": hace,
             "audio_level": ultimo.get('audio_level'),
             "is_silent": ultimo.get('is_silent', False),
@@ -103,23 +109,14 @@ def ping():
     return jsonify({
         "status": "ok",
         "mensaje": "Servidor activo",
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now(ARGENTINA_TZ).isoformat()
     })
 
 # ========================
 # Iniciar servidor
 # ========================
-
-if __name__ == '__main__':
-    log_evento("🚀 Servidor iniciado")
-    
-    # Iniciar hilo de monitoreo
-    monitor_thread = threading.Thread(target=monitor_conexion, daemon=True)
-    monitor_thread.start()
-    log_evento("👁️ Monitor de conexión iniciado")
-    
-    app.run(
-        host=FLASK_HOST,
-        port=FLASK_PORT,
-        debug=FLASK_DEBUG
-    )
+# Iniciar hilo FUERA del if (para que corra en Render)
+log_evento("🚀 Servidor iniciado")
+monitor_thread = threading.Thread(target=monitor_conexion, daemon=True)
+monitor_thread.start()
+log_evento("👁️ Monitor de conexión iniciado")
