@@ -1,6 +1,6 @@
 # ===================================
 # Configuración - Servidor
-# Monitor Radio LG
+# Monitor Radio 97.7
 # ===================================
 
 import os

@@ -231,10 +231,10 @@ Servidor:
 bashlogs/servidor.log
 Endpoints de debug
 bash# ¿Servidor vivo?
-url https://estructura-inicial-del-proyecto.onrender.com/
+url https://monitorradio97-7.onrender.com
 
 # Estado actual
-url https://estructura-inicial-del-proyecto.onrender.com/
+https://monitorradio97-7.onrender.com
 
 
 # Dashboard visual
