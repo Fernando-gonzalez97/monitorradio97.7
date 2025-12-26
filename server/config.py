@@ -9,7 +9,7 @@ import os
 # TELEGRAM BOT
 # ========================
 TELEGRAM_BOT_TOKEN = "7661456231:AAEJ5E169mxgVWGJhTilblt6rj20cy_sztc"
-TELEGRAM_CHAT_ID = "7298850248"
+TELEGRAM_CHAT_ID = "-5265595769"
 
 # ========================
 # VIGILANCIA
@@ -44,9 +44,3 @@ HEARTBEAT_FILE = "last_heartbeat.json"
 # ========================
 LOG_FILE = "../logs/servidor.log"
 LOG_LEVEL = "INFO"  # DEBUG, INFO, WARNING, ERROR
-
-# ========================
-# IDENTIFICACIÓN
-# ========================
-# ID de la radio (por si tenés múltiples radios)
-RADIO_ID = "lg_fm_radio"

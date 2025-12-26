@@ -19,7 +19,7 @@ SERVER_URL = "https://fernandogonzalezz97.pythonanywhere.com/heartbeat"
 # TELEGRAM (Alertas locales)
 # ========================
 TELEGRAM_BOT_TOKEN = "7661456231:AAEJ5E169mxgVWGJhTilblt6rj20cy_sztc"
-TELEGRAM_CHAT_ID = "7298850248"
+TELEGRAM_CHAT_ID = "-5265595769"
 
 # ========================
 # DETECCIÓN DE SILENCIO
