@@ -216,6 +216,7 @@ body::before {
     padding: 30px;
     margin-bottom: 30px;
     height: 350px;
+    transition: all 0.5s ease;
 }
 
 #audioChart {

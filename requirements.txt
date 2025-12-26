@@ -18,5 +18,3 @@ python-dateutil==2.8.2
 # Variables de entorno (opcional)
 python-dotenv==1.0.0
 
-# WSGI server para producción (PythonAnywhere ya lo tiene)
-# gunicorn==21.2.0  # No necesario en PythonAnywhere

@@ -10,7 +10,6 @@
 </head>
 <body>
     <div class="dashboard">
-        <!-- Sidebar -->
         <div class="sidebar">
             <div class="logo">
                 <span class="logo-icon">🎙️</span>
@@ -54,7 +53,6 @@
             </div>
         </div>
         
-        <!-- Main Content -->
         <div class="main-content">
             <div class="header">
                 <h2>Monitor de Audio en Tiempo Real</h2>
@@ -64,12 +62,10 @@
                 </div>
             </div>
             
-            <!-- Audio Visualizer -->
             <div class="visualizer-container">
                 <canvas id="audioChart"></canvas>
             </div>
             
-            <!-- Metrics Grid -->
             <div class="metrics-grid">
                 <div class="metric-card">
                     <div class="metric-icon">📊</div>
@@ -107,77 +103,11 @@
     </div>
 
     <script>
-        // Configuración del gráfico
-        const ctx = document.getElementById('audioChart').getContext('2d');
-        const audioLevel = {{ estado.audio_level }};
-        const isSilent = {{ 'true' if estado.is_silent else 'false' }};
-        
-        // Generar datos simulados de forma de onda
-        const generateWaveform = (level, silent) => {
-            const data = [];
-            const points = 100;
-            const amplitude = silent ? 2 : Math.abs(level) / 3;
-            
-            for (let i = 0; i < points; i++) {
-                const x = (i / points) * Math.PI * 4;
-                const noise = (Math.random() - 0.5) * amplitude * 0.3;
-                const wave = Math.sin(x) * amplitude + noise;
-                data.push(wave);
-            }
-            return data;
+        window.radioData = {
+            audioLevel: {{ estado.audio_level }},
+            isSilent: {{ 'true' if estado.is_silent else 'false' }}
         };
-        
-        const waveformData = generateWaveform(audioLevel, isSilent);
-        
-        const audioChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: Array(100).fill(''),
-                datasets: [{
-                    label: 'Señal de Audio',
-                    data: waveformData,
-                    borderColor: isSilent ? 'rgba(239, 68, 68, 0.8)' : 'rgba(34, 197, 94, 0.8)',
-                    backgroundColor: isSilent ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        enabled: false
-                    }
-                },
-                scales: {
-                    x: {
-                        display: false
-                    },
-                    y: {
-                        display: true,
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.05)',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            font: {
-                                size: 10
-                            }
-                        }
-                    }
-                },
-                animation: {
-                    duration: 750
-                }
-            }
-        });
     </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
