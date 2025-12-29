@@ -31,6 +31,7 @@ def enviar_alerta(mensaje):
             return True
         else:
             print(f"⚠️ Error Telegram: HTTP {response.status_code}")
+            print(f"Respuesta: {response.text}")
             return False
             
     except Exception as e:

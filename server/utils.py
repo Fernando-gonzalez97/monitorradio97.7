@@ -35,7 +35,11 @@ def log_evento(mensaje):
     log_msg = f"[{timestamp}] {mensaje}\n"
     
     try:
-        os.makedirs("../logs", exist_ok=True)
+        # Crear directorio si no existe
+        log_dir = os.path.dirname(LOG_FILE)
+        if log_dir and not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+        
         with open(LOG_FILE, 'a', encoding='utf-8') as f:
             f.write(log_msg)
     except Exception as e:

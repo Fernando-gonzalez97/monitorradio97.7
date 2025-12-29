@@ -112,6 +112,50 @@ def ping():
         "timestamp": datetime.now(ARGENTINA_TZ).isoformat()
     })
 
+@app.route('/test-telegram', methods=['GET'])
+def test_telegram():
+    """Probar envío de Telegram"""
+    from telegram_bot import enviar_alerta
+    
+    mensaje = "🧪 TEST DEL SISTEMA\n\n📻 Radio Monitor 97.7 FM\n✅ Telegram funcionando correctamente"
+    
+    if enviar_alerta(mensaje):
+        log_evento("🧪 Test de Telegram exitoso")
+        return jsonify({"status": "ok", "mensaje": "Alerta enviada correctamente"}), 200
+    else:
+        log_evento("🧪 Test de Telegram FALLÓ")
+        return jsonify({"status": "error", "mensaje": "Error al enviar alerta"}), 500
+
+@app.route('/debug', methods=['GET'])
+def debug_info():
+    """Ver información de debug"""
+    from monitor import alerta_desconexion_enviada, contador_chequeos
+    
+    ultimo = cargar_heartbeat()
+    
+    if ultimo:
+        hace = int((datetime.now(timezone.utc).timestamp() - ultimo['timestamp']))
+        timestamp = datetime.fromtimestamp(ultimo['timestamp'], tz=timezone.utc)
+        
+        info = {
+            "monitor_activo": True,
+            "chequeos_realizados": contador_chequeos,
+            "alerta_enviada": alerta_desconexion_enviada,
+            "ultimo_heartbeat": timestamp.isoformat(),
+            "hace_segundos": hace,
+            "timeout_configurado": MAX_HEARTBEAT_TIMEOUT,
+            "estado": "OFFLINE" if hace > MAX_HEARTBEAT_TIMEOUT else "ONLINE"
+        }
+    else:
+        info = {
+            "monitor_activo": True,
+            "chequeos_realizados": contador_chequeos,
+            "alerta_enviada": alerta_desconexion_enviada,
+            "mensaje": "Sin heartbeat recibido aún"
+        }
+    
+    return jsonify(info)
+
 # ========================
 # Iniciar servidor
 # ========================
@@ -120,6 +164,7 @@ log_evento("🚀 Servidor iniciado")
 monitor_thread = threading.Thread(target=monitor_conexion, daemon=True)
 monitor_thread.start()
 log_evento("👁️ Monitor de conexión iniciado")
+
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5000))
