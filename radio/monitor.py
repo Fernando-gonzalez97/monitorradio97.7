@@ -51,15 +51,12 @@ class MonitorRadio(ctk.CTk):
     def __init__(self):
         super().__init__()
         
-        # Configurar ventana
         self.title(WINDOW_TITLE)
         self.geometry(WINDOW_SIZE)
         
-        # Configurar tema
         ctk.set_appearance_mode(THEME)
         ctk.set_default_color_theme("blue")
         
-        # Variables de estado
         self.monitoring = False
         self.monitor_thread = None
         self.last_status = False
@@ -67,32 +64,21 @@ class MonitorRadio(ctk.CTk):
         self.last_heartbeat = time.time()
         self.consecutive_errors = 0
         
-        # Crear interfaz
         self.crear_interfaz()
-        
-        # Iniciar monitoreo automático
         self.after(500, self.iniciar_monitoreo)
         
     def crear_interfaz(self):
         """Crear interfaz gráfica moderna"""
-        
-        # Frame principal
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # ==================
-        # Título
-        # ==================
         titulo = ctk.CTkLabel(
             self.main_frame,
-            text="🎙️ Monitor Radio ",
+            text="🎙️ Monitor Radio",
             font=("Arial", 24, "bold")
         )
         titulo.pack(pady=(0, 20))
         
-        # ==================
-        # Estado
-        # ==================
         estado_frame = ctk.CTkFrame(self.main_frame)
         estado_frame.pack(fill="x", padx=10, pady=10)
         
@@ -104,36 +90,27 @@ class MonitorRadio(ctk.CTk):
         )
         self.estado_label.pack(pady=10)
         
-        # ==================
-        # Métricas
-        # ==================
         metricas_frame = ctk.CTkFrame(self.main_frame)
         metricas_frame.pack(fill="x", padx=10, pady=10)
         
-        # Audio Level
         ctk.CTkLabel(metricas_frame, text="🔊 Nivel de Audio:", 
                     font=("Arial", 12)).grid(row=0, column=0, sticky="w", padx=10, pady=5)
         self.audio_label = ctk.CTkLabel(metricas_frame, text="-- dBFS", 
                                        font=("Arial", 14, "bold"))
         self.audio_label.grid(row=0, column=1, sticky="w", padx=10, pady=5)
         
-        # Stream Status
-        ctk.CTkLabel(metricas_frame, text="🌐 Estado Stream:", 
+        ctk.CTkLabel(metricas_frame, text="🎚️ Entrada:", 
                     font=("Arial", 12)).grid(row=1, column=0, sticky="w", padx=10, pady=5)
         self.stream_label = ctk.CTkLabel(metricas_frame, text="Desconocido", 
                                         font=("Arial", 12))
         self.stream_label.grid(row=1, column=1, sticky="w", padx=10, pady=5)
         
-        # Heartbeat
         ctk.CTkLabel(metricas_frame, text="💓 Último Heartbeat:", 
                     font=("Arial", 12)).grid(row=2, column=0, sticky="w", padx=10, pady=5)
         self.heartbeat_label = ctk.CTkLabel(metricas_frame, text="Nunca", 
                                            font=("Arial", 12))
         self.heartbeat_label.grid(row=2, column=1, sticky="w", padx=10, pady=5)
         
-        # ==================
-        # Botón Control
-        # ==================
         self.toggle_btn = ctk.CTkButton(
             self.main_frame,
             text="▶ Iniciar Monitoreo",
@@ -143,9 +120,6 @@ class MonitorRadio(ctk.CTk):
         )
         self.toggle_btn.pack(pady=20)
         
-        # ==================
-        # Log de eventos
-        # ==================
         log_label = ctk.CTkLabel(self.main_frame, text="📋 Registro de Eventos", 
                                 font=("Arial", 14, "bold"))
         log_label.pack(pady=(10, 5))
@@ -157,7 +131,6 @@ class MonitorRadio(ctk.CTk):
         """Agregar mensaje al log"""
         timestamp = datetime.now().strftime("%H:%M:%S")
         linea = f"[{timestamp}] {mensaje}\n"
-        
         self.log_text.insert("end", linea)
         self.log_text.see("end")
         
@@ -173,11 +146,8 @@ class MonitorRadio(ctk.CTk):
         self.monitoring = True
         self.estado_label.configure(text="🟢 Activo", text_color="green")
         self.toggle_btn.configure(text="⏸ Detener Monitoreo")
-        
         self.log("✅ Monitoreo iniciado", importante=True)
         self.log(f"Umbral: {SILENCE_THRESH} dBFS | Heartbeat: cada {HEARTBEAT_INTERVAL}s")
-        
-        # Iniciar thread de monitoreo
         self.monitor_thread = threading.Thread(target=self.monitor_loop, daemon=True)
         self.monitor_thread.start()
         
@@ -186,18 +156,17 @@ class MonitorRadio(ctk.CTk):
         self.monitoring = False
         self.estado_label.configure(text="🔴 Detenido", text_color="red")
         self.toggle_btn.configure(text="▶ Iniciar Monitoreo")
-        
         self.log("⛔ Monitoreo detenido", importante=True)
         
     def enviar_telegram(self, texto):
-    """Enviar mensaje a Telegram usando el módulo"""
-    from telegram import enviar_alerta
-    if enviar_alerta(texto):
-        self.log("📤 Alerta enviada a Telegram")
-        return True
-    else:
-        self.log("⚠️ Error enviando alerta")
-        return False
+        """Enviar mensaje a Telegram usando el módulo"""
+        from telegram import enviar_alerta
+        if enviar_alerta(texto):
+            self.log("📤 Alerta enviada a Telegram")
+            return True
+        else:
+            self.log("⚠️ Error enviando alerta")
+            return False
             
     def enviar_heartbeat(self, audio_level, es_silencio):
         """Enviar heartbeat al servidor"""
@@ -209,67 +178,51 @@ class MonitorRadio(ctk.CTk):
                 "is_silent": es_silencio,
                 "status": "ok"
             }
-            
             response = requests.post(SERVER_URL, json=datos, timeout=5)
-            
             if response.status_code == 200:
                 self.last_heartbeat = time.time()
                 self.after(0, lambda: self.heartbeat_label.configure(
                     text=datetime.now().strftime("%H:%M:%S")))
                 return True
             return False
-            
         except Exception as e:
             if self.consecutive_errors == 0:
                 self.log(f"⚠️ Error heartbeat: {str(e)[:40]}")
             return False
             
     def analizar_audio(self):
-        """Analizar audio del stream"""
+        """Analizar audio desde entrada de línea (placa de sonido)"""
         try:
-            r = requests.get(STREAM_URL, stream=True, timeout=TIMEOUT)
-            
-            if r.status_code != 200:
-                self.after(0, lambda: self.stream_label.configure(
-                    text=f"HTTP {r.status_code}"))
-                return None
-            
-            # Leer datos
-            raw_data = r.raw.read(44100 * 2 * 2 * 5)
-            
-            if len(raw_data) < 1000:
-                return None
-            
-            # Procesar audio
-            try:
-                audio = AudioSegment.from_file(io.BytesIO(raw_data), format="mp3")
-                db_level = audio.dBFS
-            except:
-                if self.consecutive_errors == 0:
-                    self.log("⚠️ Error procesando audio")
-                self.consecutive_errors += 1
-                return None
-            
-            # Actualizar UI
+            import sounddevice as sd
+            import numpy as np
+
+            duration = 3
+            samplerate = 44100
+
+            recording = sd.rec(
+                int(duration * samplerate),
+                samplerate=samplerate,
+                channels=1,
+                dtype='float32'
+            )
+            sd.wait()
+
+            volume = np.linalg.norm(recording) / len(recording)
+            db_level = 20 * np.log10(volume + 1e-9)
+
             self.after(0, lambda d=db_level: self.audio_label.configure(
                 text=f"{d:.1f} dBFS"))
-            self.after(0, lambda: self.stream_label.configure(text="Conectado ✓"))
-            
+            self.after(0, lambda: self.stream_label.configure(text="Line-In ✓"))
+
             self.consecutive_errors = 0
-            
             return db_level < SILENCE_THRESH
-            
-        except requests.exceptions.Timeout:
-            if self.consecutive_errors <= 1:
-                self.log("⏱️ Timeout conectando")
-            self.consecutive_errors += 1
-            return None
+
         except Exception as e:
             if self.consecutive_errors <= 1:
-                self.log(f"❌ Error: {str(e)[:50]}")
+                self.log(f"❌ Error audio físico: {str(e)[:50]}")
             self.consecutive_errors += 1
             return None
-            
+
     def monitor_loop(self):
         """Loop principal de monitoreo"""
         ultimo_heartbeat = time.time()
@@ -283,7 +236,6 @@ class MonitorRadio(ctk.CTk):
             
             now = time.strftime("%Y-%m-%d %H:%M:%S")
             
-            # Detectar silencio
             if es_silencio:
                 if self.silence_start_time is None:
                     self.silence_start_time = time.time()
@@ -295,8 +247,6 @@ class MonitorRadio(ctk.CTk):
                     self.enviar_telegram(msg)
                     self.log(f"🔴 SILENCIO DETECTADO ({duracion:.0f}s)", importante=True)
                     self.last_status = True
-            
-            # Detectar audio restaurado
             else:
                 if self.silence_start_time is not None:
                     self.silence_start_time = None
@@ -307,7 +257,6 @@ class MonitorRadio(ctk.CTk):
                     self.log("🟢 AUDIO RESTAURADO", importante=True)
                     self.last_status = False
             
-            # Enviar heartbeat cada X segundos
             if time.time() - ultimo_heartbeat >= HEARTBEAT_INTERVAL:
                 audio_level = -999 if es_silencio is None else (
                     SILENCE_THRESH - 10 if es_silencio else SILENCE_THRESH + 10)
