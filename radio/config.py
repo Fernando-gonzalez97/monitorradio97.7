@@ -8,13 +8,14 @@
 # ========================
 STREAM_URL = "http://stream.lgcomunicaciones.com:8045/;stream/1"
 
+# ID de esta radio (para identificarla en el servidor)
+RADIO_ID = "radio_fm_97.7"
+
 # ========================
 # SERVIDOR EXTERNO
 # ========================
 # URL del servidor donde enviar heartbeats
-# URL del servidor
-SERVER_URL = "https://monitorradio97-7.onrender.com"
-
+SERVER_URL = "https://monitorradio97-7.onrender.com/heartbeat"
 
 # ========================
 # TELEGRAM (Alertas locales)
@@ -26,11 +27,13 @@ TELEGRAM_CHAT_ID = "-5265595769"
 # DETECCIÓN DE SILENCIO
 # ========================
 # Umbral de silencio en dBFS (decibelios)
-# -60 = muy sensible | -40 = menos sensible
-SILENCE_THRESH = -60
-
+# Valores recomendados para Line-In físico:
+# -80 = Silencio casi total
+# -82 = Recomendado (señal normal ~-78 dBFS)
+# -85 = Más permisivo
+SILENCE_THRESH = -82  # ← Ajustado para Line-In físico
 # Duración mínima de silencio antes de alertar (segundos)
-MIN_SILENCE_DURATION = 10
+MIN_SILENCE_DURATION = 45  # ← Sincronizado con el servidor (45 seg)
 
 # ========================
 # HEARTBEAT
@@ -51,11 +54,10 @@ TIMEOUT = 10
 # INTERFAZ GRÁFICA
 # ========================
 # Título de la ventana
-WINDOW_TITLE = "Monitor Radio "
+WINDOW_TITLE = "Monitor Radio 97.7"
 
 # Tamaño de ventana (ancho x alto)
 WINDOW_SIZE = "700x500"
 
 # Tema: "dark" o "light"
 THEME = "dark"
-
