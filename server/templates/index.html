@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Radio 97.7</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <meta http-equiv="refresh" content="30">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">🎙️</span>
+                <div class="logo-text">
+                    <h1>Radio Monitor</h1>
+                    <span>97.7 FM</span>
+                </div>
+            </div>
+            
+            <div class="status-panel">
+                <div class="status-item">
+                    <span class="status-label">Estado</span>
+                    <div class="status-indicator {{ 'online' if estado.online else 'offline' }}">
+                        <span class="pulse-dot"></span>
+                        {{ 'ONLINE' if estado.online else 'OFFLINE' }}
+                    </div>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">Audio</span>
+                    <div class="audio-status {{ 'active' if not estado.is_silent else 'silent' }}">
+                        {{ 'TRANSMITIENDO' if not estado.is_silent else 'SILENCIO' }}
+                    </div>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">Nivel</span>
+                    <div class="level-display">{{ estado.audio_level }} dBFS</div>
+                </div>
+                
+                <div class="status-item">
+                    <span class="status-label">Última señal</span>
+                    <div class="time-display">{{ estado.tiempo_str }}</div>
+                    <div class="time-ago">Hace {{ estado.hace }}s</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <h2>Monitor de Audio en Tiempo Real</h2>
+            </div>
+            
+            <div class="visualizer-container">
+                <canvas id="audioChart"></canvas>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon">📊</div>
+                    <div class="metric-content">
+                        <span class="metric-value">{{ estado.audio_level }}</span>
+                        <span class="metric-label">Nivel Actual (dBFS)</span>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">⏱️</div>
+                    <div class="metric-content">
+                        <span class="metric-value">{{ estado.hace }}</span>
+                        <span class="metric-label">Segundos desde última señal</span>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">{{ '🔊' if not estado.is_silent else '🔇' }}</div>
+                    <div class="metric-content">
+                        <span class="metric-value">{{ 'ACTIVO' if not estado.is_silent else 'INACTIVO' }}</span>
+                        <span class="metric-label">Estado del Stream</span>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">{{ '🟢' if estado.online else '🔴' }}</div>
+                    <div class="metric-content">
+                        <span class="metric-value">{{ 'CONECTADO' if estado.online else 'DESCONECTADO' }}</span>
+                        <span class="metric-label">Conexión PC Radio</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.radioData = {
+            audioLevel: {{ estado.audio_level }},
+            isSilent: {{ 'true' if estado.is_silent else 'false' }}
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
