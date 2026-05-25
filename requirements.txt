@@ -18,3 +18,5 @@ python-dateutil==2.8.2
 # Variables de entorno (opcional)
 python-dotenv==1.0.0
 
+#levantar
+#monitorradio97.7-main\radio>python interfaz\interfaz.py

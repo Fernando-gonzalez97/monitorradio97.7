@@ -1,8 +1,19 @@
 """
 Grafica - Canvas de onda de audio en tiempo real
+Migrado de tkinter.Canvas a PyQt6 QPainter
 """
 
-import tkinter as tk
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import Qt, QTimer, QRect, QPoint
+from PyQt6.QtGui import (
+    QPainter, QColor, QPen, QBrush, QPolygon,
+    QFont, QLinearGradient, QPainterPath
+)
 from config import SILENCE_THRESH
 from css.colores import (
     FONDO, GRILLA,
@@ -11,23 +22,19 @@ from css.colores import (
     BARRA_VERDE, BARRA_NARANJA, BARRA_ROJO,
     ESCALA_DB, TEXTO_MUTED
 )
-from css.fuentes import DB_CANVAS, ESCALA, ETIQUETA_LR, UMBRAL
 
-class Grafica(tk.Frame):
-    def __init__(self, parent):
-        super().__init__(parent, bg=FONDO)
 
-        self.db_actual = 0.0
-        self.datos = [0.0] * 60
+class Grafica(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.db_actual = -120.0
+        self.datos = [-120.0] * 60
+        self.setMinimumSize(300, 200)
 
-        self.canvas = tk.Canvas(
-            self,
-            bg=FONDO,
-            highlightthickness=0
-        )
-        self.canvas.pack(fill="both", expand=True, padx=2, pady=2)
-
-        self._actualizar_loop()
+        # Timer de refresco
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update)
+        self.timer.start(150)
 
     # ========================
     # DATOS
@@ -37,49 +44,60 @@ class Grafica(tk.Frame):
         self.datos = datos
 
     # ========================
-    # DIBUJO
+    # COLOR SEGÚN NIVEL
     # ========================
-    def _actualizar_loop(self):
-        if not self.canvas.winfo_exists():
-            return
-        self._dibujar()
-        self.after(150, self._actualizar_loop)
+    def _color_actual(self):
+        if self.db_actual < SILENCE_THRESH:
+            return QColor(ROJO)
+        elif self.db_actual < SILENCE_THRESH + 10:
+            return QColor(NARANJA)
+        return QColor(VERDE)
 
-    def _dibujar(self):
-        self.canvas.delete("all")
-        w = self.canvas.winfo_width()
-        h = self.canvas.winfo_height()
+    # ========================
+    # PAINT
+    # ========================
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        if w < 10 or h < 10:
-            return
+        w = self.width()
+        h = self.height()
 
-        self._dibujar_grilla(w, h)
-        self._dibujar_umbral(w, h)
-        self._dibujar_onda(w, h)
-        self._dibujar_medidores(w, h)
-        self._dibujar_nivel(w, h)
+        self._dibujar_fondo(painter, w, h)
+        self._dibujar_grilla(painter, w, h)
+        self._dibujar_umbral(painter, w, h)
+        self._dibujar_onda(painter, w, h)
+        self._dibujar_medidores(painter, w, h)
+        self._dibujar_nivel(painter, w, h)
 
-    def _dibujar_grilla(self, w, h):
+        painter.end()
+
+    def _dibujar_fondo(self, p, w, h):
+        grad = QLinearGradient(0, 0, 0, h)
+        grad.setColorAt(0, QColor("#0d1117"))
+        grad.setColorAt(1, QColor("#1a1a2e"))
+        p.fillRect(0, 0, w, h, grad)
+
+    def _dibujar_grilla(self, p, w, h):
+        pen = QPen(QColor(GRILLA), 1)
+        p.setPen(pen)
         for i in range(0, w, 40):
-            self.canvas.create_line(i, 0, i, h, fill=GRILLA, width=1)
+            p.drawLine(i, 0, i, h)
         for j in range(0, h, 30):
-            self.canvas.create_line(0, j, w, j, fill=GRILLA, width=1)
+            p.drawLine(0, j, w, j)
 
-    def _dibujar_umbral(self, w, h):
-        umbral_y = h * 0.3
-        self.canvas.create_line(
-            0, umbral_y, w, umbral_y,
-            fill=ROJO, width=1, dash=(6, 4)
-        )
-        self.canvas.create_text(
-            w - 10, umbral_y - 8,
-            text=f"umbral {SILENCE_THRESH} dBFS",
-            fill=ROJO,
-            font=UMBRAL,
-            anchor="e"
-        )
+    def _dibujar_umbral(self, p, w, h):
+        umbral_y = int(h * 0.3)
+        pen = QPen(QColor(ROJO), 1, Qt.PenStyle.DashLine)
+        p.setPen(pen)
+        p.drawLine(0, umbral_y, w - 60, umbral_y)
 
-    def _dibujar_onda(self, w, h):
+        p.setPen(QColor(ROJO))
+        f = QFont("Consolas", 8)
+        p.setFont(f)
+        p.drawText(w - 115, umbral_y - 5, f"umbral {SILENCE_THRESH} dBFS")
+
+    def _dibujar_onda(self, p, w, h):
         datos = self.datos
         if len(datos) < 2:
             return
@@ -88,106 +106,109 @@ class Grafica(tk.Frame):
         MAX_DB = 0
         color = self._color_actual()
         paso = w / (len(datos) - 1)
-        puntos = []
 
+        puntos = []
         for i, db in enumerate(datos):
-            x = i * paso
+            x = int(i * paso)
             norm = (db - MIN_DB) / (MAX_DB - MIN_DB)
             norm = max(0.0, min(1.0, norm))
-            y = h - (norm * h * 0.85) - (h * 0.05)
+            y = int(h - (norm * h * 0.85) - (h * 0.05))
             puntos.append((x, y))
 
-        # Área rellena
-        poly = []
+        # Path del área rellena
+        path = QPainterPath()
+        path.moveTo(puntos[0][0], h)
         for x, y in puntos:
-            poly.extend([x, y])
-        poly.extend([puntos[-1][0], h, puntos[0][0], h])
-        self.canvas.create_polygon(poly, fill=color, stipple="gray25", outline="")
+            path.lineTo(x, y)
+        path.lineTo(puntos[-1][0], h)
+        path.closeSubpath()
+
+        # Gradiente de relleno
+        grad = QLinearGradient(0, 0, 0, h)
+        fill_color = QColor(color)
+        fill_color.setAlpha(60)
+        fill_color2 = QColor(color)
+        fill_color2.setAlpha(10)
+        grad.setColorAt(0, fill_color)
+        grad.setColorAt(1, fill_color2)
+        p.fillPath(path, grad)
 
         # Línea principal
+        pen = QPen(color, 2)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
         for i in range(len(puntos) - 1):
-            self.canvas.create_line(
-                puntos[i][0], puntos[i][1],
-                puntos[i+1][0], puntos[i+1][1],
-                fill=color, width=2, smooth=True
-            )
+            p.drawLine(puntos[i][0], puntos[i][1], puntos[i+1][0], puntos[i+1][1])
 
-    def _dibujar_medidores(self, w, h):
+    def _dibujar_medidores(self, p, w, h):
         MIN_DB = -60
         MAX_DB = 0
         db = max(MIN_DB, min(MAX_DB, self.db_actual))
         norm = (db - MIN_DB) / (MAX_DB - MIN_DB)
 
-        barra_h = int(h * 0.7 * norm)
-        barra_y_base = int(h * 0.9)
-        barra_ancho = 14
+        barra_h_total = int(h * 0.75)
+        barra_y_base = int(h * 0.92)
+        barra_ancho = 16
         gap = 8
 
-        x_r = w - 15
+        x_r = w - 18
         x_l = x_r - barra_ancho - gap
 
         for x in [x_l, x_r]:
-            # Fondo
-            self.canvas.create_rectangle(
-                x, barra_y_base - int(h * 0.7),
-                x + barra_ancho, barra_y_base,
-                fill=BARRA_FONDO, outline=BARRA_BORDE
-            )
-            # Segmentos
-            seg_total = int(h * 0.7)
+            # Fondo de la barra
+            p.setPen(QPen(QColor(BARRA_BORDE), 1))
+            p.setBrush(QBrush(QColor(BARRA_FONDO)))
+            p.drawRoundedRect(x, barra_y_base - barra_h_total, barra_ancho, barra_h_total, 2, 2)
+
+            # Segmentos activos
             seg_h = 4
             seg_gap = 2
-            for s in range(0, seg_total, seg_h + seg_gap):
+            barra_activa = int(barra_h_total * norm)
+
+            s = 0
+            while s < barra_h_total:
                 sy_bottom = barra_y_base - s
                 sy_top = sy_bottom - seg_h
-                if sy_top < barra_y_base - barra_h:
+                if sy_top < barra_y_base - barra_h_total:
                     break
-                pct = s / seg_total
+                if barra_y_base - s > barra_y_base - barra_activa:
+                    s += seg_h + seg_gap
+                    continue
+                pct = s / barra_h_total
                 if pct > 0.85:
-                    color_seg = BARRA_ROJO
+                    seg_color = QColor(BARRA_ROJO)
                 elif pct > 0.65:
-                    color_seg = BARRA_NARANJA
+                    seg_color = QColor(BARRA_NARANJA)
                 else:
-                    color_seg = BARRA_VERDE
-                self.canvas.create_rectangle(
-                    x + 1, sy_top,
-                    x + barra_ancho - 1, sy_bottom,
-                    fill=color_seg, outline=""
-                )
+                    seg_color = QColor(BARRA_VERDE)
 
-        # Etiquetas L R
-        self.canvas.create_text(
-            x_l + barra_ancho // 2, barra_y_base + 10,
-            text="L", fill=TEXTO_MUTED, font=ETIQUETA_LR
-        )
-        self.canvas.create_text(
-            x_r + barra_ancho // 2, barra_y_base + 10,
-            text="R", fill=TEXTO_MUTED, font=ETIQUETA_LR
-        )
+                # Brillo en el segmento
+                seg_color.setAlpha(220)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QBrush(seg_color))
+                p.drawRect(x + 2, sy_top, barra_ancho - 4, seg_h)
+                s += seg_h + seg_gap
 
-        # Escala dB
+        # Etiquetas L / R
+        p.setPen(QColor(TEXTO_MUTED))
+        f = QFont("Segoe UI", 8, QFont.Weight.Bold)
+        p.setFont(f)
+        p.drawText(x_l + barra_ancho // 2 - 4, barra_y_base + 14, "L")
+        p.drawText(x_r + barra_ancho // 2 - 4, barra_y_base + 14, "R")
+
+        # Escala dB lateral
+        p.setPen(QColor(ESCALA_DB))
+        f2 = QFont("Consolas", 7)
+        p.setFont(f2)
         for db_mark, label in [(-60, "-60"), (-42, "-42"), (-24, "-24"), (-12, "-12"), (-6, "-6"), (0, "0")]:
             norm_m = (db_mark - MIN_DB) / (MAX_DB - MIN_DB)
-            y_mark = barra_y_base - int(h * 0.7 * norm_m)
-            self.canvas.create_text(
-                x_l - 6, y_mark,
-                text=label, fill=ESCALA_DB,
-                font=ESCALA, anchor="e"
-            )
+            y_mark = barra_y_base - int(barra_h_total * norm_m)
+            p.drawText(x_l - 28, y_mark + 4, label)
 
-    def _dibujar_nivel(self, w, h):
+    def _dibujar_nivel(self, p, w, h):
         color = self._color_actual()
-        self.canvas.create_text(
-            10, 15,
-            text=f"{self.db_actual:.1f} dBFS",
-            fill=color,
-            font=DB_CANVAS,
-            anchor="w"
-        )
-
-    def _color_actual(self):
-        if self.db_actual < SILENCE_THRESH:
-            return ROJO
-        elif self.db_actual < SILENCE_THRESH + 10:
-            return NARANJA
-        return VERDE
+        p.setPen(color)
+        f = QFont("Consolas", 11, QFont.Weight.Bold)
+        p.setFont(f)
+        p.drawText(10, 22, f"{self.db_actual:.1f} dBFS")

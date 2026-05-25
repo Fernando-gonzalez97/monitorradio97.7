@@ -28,3 +28,10 @@ ESCALA_DB     = "#555577"
 AZUL          = "#2980b9"
 AZUL_HOVER    = "#1a6fa8"
 TEXTO_MUTED   = "#aaaaaa"
+
+# ========================
+# NUEVOS - PANELES Y BORDES
+# ========================
+PANEL_FONDO   = "#16213e"
+PANEL_BORDE   = "#0f3460"
+SURFACE       = "#1e2a45"

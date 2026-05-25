@@ -1,73 +1,115 @@
 """
 Ventana principal - Monitor Radio 97.7
-Solo layout y conexión entre clases
+Migrado de customtkinter a PyQt6
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # radio/
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))                   # radio/interfaz/
 
-import customtkinter as ctk
-from config import THEME, WINDOW_TITLE
+from PyQt6.QtWidgets import (
+    QMainWindow, QWidget, QGridLayout,
+    QVBoxLayout, QHBoxLayout, QFrame,
+    QLabel, QPushButton, QApplication
+)
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QIcon, QPixmap, QPainter, QFont
+
+from config import WINDOW_TITLE
 from grafica import Grafica
 from panel_metricas import PanelMetricas
 from monitor_loop import MonitorLoop
-from css.componentes import BTN_DETENER, BTN_INICIAR, ESTADO_VIVO, ESTADO_DETENIDO
-from css.fuentes import TITULO, SUBTITULO
+from css.estilos import QSS_GLOBAL
+from css.colores import VERDE, ROJO
 
-class MonitorRadio(ctk.CTk):
+
+class MonitorRadio(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.title(WINDOW_TITLE)
-        self.geometry("950x620")
-        ctk.set_appearance_mode(THEME)
-        ctk.set_default_color_theme("blue")
+        self.setWindowTitle(WINDOW_TITLE)
+        self.setMinimumSize(960, 620)
+        self.resize(960, 640)
+        self.setStyleSheet(QSS_GLOBAL)
+
+        # icono logo microfono
+        self.setWindowIcon(self._crear_icono())
 
         self._crear_layout()
-        self.after(500, self._iniciar_monitoreo)
+
+        # Iniciar monitoreo automático después de 500ms
+        QTimer.singleShot(500, self._iniciar_monitoreo)
+
+    # ========================
+    # ICONO LOGO MICROFONO
+    # ========================
+    def _crear_icono(self):
+        pixmap = QPixmap(32, 32)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pixmap)
+        painter.setFont(QFont("Segoe UI Emoji", 20))
+        painter.drawText(0, 26, "🎙️")
+        painter.end()
+        return QIcon(pixmap)
 
     # ========================
     # LAYOUT
     # ========================
     def _crear_layout(self):
-        self.columnconfigure(0, weight=2)
-        self.columnconfigure(1, weight=1)
-        self.rowconfigure(0, weight=1)
+        central = QWidget()
+        central.setObjectName("root")
+        self.setCentralWidget(central)
 
-        # Panel izquierdo
-        panel_izq = ctk.CTkFrame(self)
-        panel_izq.grid(row=0, column=0, sticky="nsew", padx=(15, 8), pady=15)
-        panel_izq.columnconfigure(0, weight=1)
-        panel_izq.rowconfigure(2, weight=1)
+        root_layout = QHBoxLayout(central)
+        root_layout.setContentsMargins(15, 15, 15, 15)
+        root_layout.setSpacing(12)
 
-        # Título
-        ctk.CTkLabel(
-            panel_izq,
-            text="🎙️ Monitor Radio 97.7",
-            font=TITULO
-        ).grid(row=0, column=0, pady=(15, 2))
+        # ---- PANEL IZQUIERDO ----
+        panel_izq = QFrame()
+        panel_izq.setObjectName("panel_izq")
+        izq_layout = QVBoxLayout(panel_izq)
+        izq_layout.setContentsMargins(12, 12, 12, 12)
+        izq_layout.setSpacing(6)
 
-        # Estado
-        self.estado_label = ctk.CTkLabel(
-            panel_izq,
-            font=SUBTITULO,
-            **ESTADO_DETENIDO
-        )
-        self.estado_label.grid(row=1, column=0, pady=2)
+        # Cabecera: ícono + título + estado
+        header = QHBoxLayout()
+        icono = QLabel("🎙️")
+        icono.setStyleSheet("font-size: 28px;")
+        header.addWidget(icono)
+
+        titulo_col = QVBoxLayout()
+        titulo_col.setSpacing(2)
+
+        titulo_lbl = QLabel(WINDOW_TITLE)
+        titulo_lbl.setObjectName("titulo")
+        titulo_col.addWidget(titulo_lbl)
+
+        self.estado_label = QLabel("🟢 En el aire")
+        self.estado_label.setObjectName("estado_vivo")
+        titulo_col.addWidget(self.estado_label)
+
+        header.addLayout(titulo_col)
+        header.addStretch()
+        izq_layout.addLayout(header)
 
         # Gráfica
-        self.grafica = Grafica(panel_izq)
-        self.grafica.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
+        self.grafica = Grafica()
+        izq_layout.addWidget(self.grafica, stretch=1)
 
-        # Botón
-        self.toggle_btn = ctk.CTkButton(
-            panel_izq,
-            command=self._toggle_monitoreo,
-            **BTN_DETENER
-        )
-        self.toggle_btn.grid(row=3, column=0, pady=(5, 15), padx=20, sticky="ew")
+        # Botón toggle
+        self.toggle_btn = QPushButton("⏸  Detener Monitoreo")
+        self.toggle_btn.setObjectName("btn_detener")
+        self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.toggle_btn.clicked.connect(self._toggle_monitoreo)
+        self.toggle_btn.setFixedHeight(42)
+        izq_layout.addWidget(self.toggle_btn)
 
-        # Panel derecho
-        self.metricas = PanelMetricas(self)
-        self.metricas.grid(row=0, column=1, sticky="nsew", padx=(8, 15), pady=15)
+        root_layout.addWidget(panel_izq, stretch=2)
+
+        # ---- PANEL DERECHO ----
+        self.metricas = PanelMetricas()
+        root_layout.addWidget(self.metricas, stretch=1)
 
         # Monitor loop
         self.loop = MonitorLoop(
@@ -79,23 +121,23 @@ class MonitorRadio(ctk.CTk):
         )
 
     # ========================
-    # CALLBACKS
+    # CALLBACKS (desde hilo)
     # ========================
     def _on_db_update(self, db, datos):
-        self.after(0, lambda: self.grafica.actualizar(db, datos))
-        self.after(0, lambda: self.metricas.set_db(db))
+        QTimer.singleShot(0, lambda: self.grafica.actualizar(db, datos))
+        QTimer.singleShot(0, lambda: self.metricas.set_db(db))
 
     def _on_silencio(self, duracion):
-        self.after(0, lambda: self.metricas.add_log(f"🔴 SILENCIO DETECTADO ({duracion:.0f}s)"))
+        QTimer.singleShot(0, lambda: self.metricas.add_log(f"🔴 SILENCIO DETECTADO ({duracion:.0f}s)"))
 
     def _on_restaurado(self):
-        self.after(0, lambda: self.metricas.add_log("🟢 AUDIO RESTAURADO"))
+        QTimer.singleShot(0, lambda: self.metricas.add_log("🟢 AUDIO RESTAURADO"))
 
     def _on_heartbeat(self, ok):
-        self.after(0, lambda: self.metricas.set_heartbeat(ok))
+        QTimer.singleShot(0, lambda: self.metricas.set_heartbeat(ok))
 
     def _on_error(self, msg):
-        self.after(0, lambda: self.metricas.add_log(f"❌ {msg}"))
+        QTimer.singleShot(0, lambda: self.metricas.add_log(f"❌ {msg}"))
 
     # ========================
     # CONTROL
@@ -108,17 +150,30 @@ class MonitorRadio(ctk.CTk):
 
     def _iniciar_monitoreo(self):
         self.loop.iniciar()
-        self.estado_label.configure(**ESTADO_VIVO)
-        self.toggle_btn.configure(**BTN_DETENER)
+        self.estado_label.setText("🟢 En el aire")
+        self.estado_label.setStyleSheet("color: #00ff88; font-weight: bold; font-size: 13px;")
+        self.toggle_btn.setText("⏸  Detener Monitoreo")
+        self.toggle_btn.setStyleSheet("""
+            background-color: #e74c3c; color: white; border-radius: 8px;
+            padding: 10px 20px; font-size: 13px; font-weight: bold;
+        """)
         self.metricas.add_log("✅ Monitoreo iniciado")
 
     def _detener_monitoreo(self):
         self.loop.detener()
-        self.estado_label.configure(**ESTADO_DETENIDO)
-        self.toggle_btn.configure(**BTN_INICIAR)
+        self.estado_label.setText("🔴 Detenido")
+        self.estado_label.setStyleSheet("color: #e74c3c; font-weight: bold; font-size: 13px;")
+        self.toggle_btn.setText("▶  Iniciar Monitoreo")
+        self.toggle_btn.setStyleSheet("""
+            background-color: #2980b9; color: white; border-radius: 8px;
+            padding: 10px 20px; font-size: 13px; font-weight: bold;
+        """)
         self.metricas.add_log("⛔ Monitoreo detenido")
 
 
 if __name__ == "__main__":
-    app = MonitorRadio()
-    app.mainloop()
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    window = MonitorRadio()
+    window.show()
+    sys.exit(app.exec())

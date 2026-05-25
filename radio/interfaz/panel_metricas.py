@@ -1,101 +1,111 @@
 """
 Panel Métricas - Panel derecho
-Muestra dBFS, barra de nivel, info y log de eventos
+Migrado de customtkinter a PyQt6
 """
 
-import customtkinter as ctk
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from PyQt6.QtWidgets import (
+    QFrame, QVBoxLayout, QHBoxLayout,
+    QLabel, QProgressBar, QPlainTextEdit, QGridLayout
+)
+from PyQt6.QtCore import Qt
 from datetime import datetime
 from config import SILENCE_THRESH, MIN_SILENCE_DURATION, HEARTBEAT_INTERVAL
 from css.colores import VERDE, NARANJA, ROJO
-from css.fuentes import SECCION, DB_GRANDE, NORMAL, NORMAL_BOLD, LOG
-from css.componentes import BARRA_NIVEL
+from css.fuentes import DB_GRANDE, NORMAL, NORMAL_BOLD, LOG, SECCION
 
-class PanelMetricas(ctk.CTkFrame):
-    def __init__(self, parent):
+
+class PanelMetricas(QFrame):
+    def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("panel_der")
         self._crear_panel()
 
     # ========================
     # LAYOUT
     # ========================
     def _crear_panel(self):
-        ctk.CTkLabel(
-            self,
-            text="📊 Métricas",
-            font=SECCION
-        ).pack(pady=(15, 10))
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(8)
 
-        # Nivel dBFS grande
-        self.db_label = ctk.CTkLabel(
-            self,
-            text="-- dBFS",
-            font=DB_GRANDE,
-            text_color=VERDE
-        )
-        self.db_label.pack(pady=10)
+        # Título sección
+        titulo = QLabel("▪ Métricas")
+        titulo.setObjectName("seccion")
+        titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(titulo)
+
+        # dBFS grande
+        self.db_label = QLabel("-- dBFS")
+        self.db_label.setObjectName("db_grande")
+        self.db_label.setFont(DB_GRANDE)
+        self.db_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.db_label.setStyleSheet(f"color: {VERDE};")
+        layout.addWidget(self.db_label)
 
         # Barra de nivel
-        ctk.CTkLabel(self, text="Nivel de señal", font=NORMAL).pack()
-        self.barra_nivel = ctk.CTkProgressBar(self, **BARRA_NIVEL)
-        self.barra_nivel.pack(pady=(5, 15))
-        self.barra_nivel.set(0)
+        nivel_lbl = QLabel("Nivel de señal")
+        nivel_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        nivel_lbl.setObjectName("info_key")
+        layout.addWidget(nivel_lbl)
 
-        # Info
-        info_frame = ctk.CTkFrame(self)
-        info_frame.pack(fill="x", padx=10, pady=5)
+        self.barra_nivel = QProgressBar()
+        self.barra_nivel.setObjectName("barra_nivel")
+        self.barra_nivel.setRange(0, 1000)
+        self.barra_nivel.setValue(0)
+        self.barra_nivel.setTextVisible(False)
+        self.barra_nivel.setFixedHeight(8)
+        layout.addWidget(self.barra_nivel)
 
-        ctk.CTkLabel(info_frame, text="🎚️ Entrada:", font=NORMAL).grid(
-            row=0, column=0, sticky="w", padx=8, pady=4)
-        self.entrada_label = ctk.CTkLabel(
-            info_frame, text="--", font=NORMAL_BOLD)
-        self.entrada_label.grid(row=0, column=1, sticky="w", padx=8, pady=4)
+        layout.addSpacing(6)
 
-        ctk.CTkLabel(info_frame, text="💓 Heartbeat:", font=NORMAL).grid(
-            row=1, column=0, sticky="w", padx=8, pady=4)
-        self.heartbeat_label = ctk.CTkLabel(
-            info_frame, text="Nunca", font=NORMAL_BOLD)
-        self.heartbeat_label.grid(row=1, column=1, sticky="w", padx=8, pady=4)
+        # Info frame
+        info_frame = QFrame()
+        info_frame.setObjectName("info_frame")
+        info_layout = QGridLayout(info_frame)
+        info_layout.setContentsMargins(10, 8, 10, 8)
+        info_layout.setSpacing(6)
 
-        ctk.CTkLabel(info_frame, text="🔇 Umbral:", font=NORMAL).grid(
-            row=2, column=0, sticky="w", padx=8, pady=4)
-        ctk.CTkLabel(
-            info_frame,
-            text=f"{SILENCE_THRESH} dBFS",
-            font=NORMAL_BOLD
-        ).grid(row=2, column=1, sticky="w", padx=8, pady=4)
+        def fila(row, icon, key, value, val_id=None):
+            lbl_k = QLabel(f"{icon}  {key}")
+            lbl_k.setObjectName("info_key")
+            lbl_v = QLabel(value)
+            lbl_v.setObjectName(val_id if val_id else "info_val")
+            info_layout.addWidget(lbl_k, row, 0)
+            info_layout.addWidget(lbl_v, row, 1)
+            return lbl_v
 
-        ctk.CTkLabel(info_frame, text="⏱ Silencio mín:", font=NORMAL).grid(
-            row=3, column=0, sticky="w", padx=8, pady=4)
-        ctk.CTkLabel(
-            info_frame,
-            text=f"{MIN_SILENCE_DURATION} s",
-            font=NORMAL_BOLD
-        ).grid(row=3, column=1, sticky="w", padx=8, pady=4)
+        self.entrada_label  = fila(0, "🎚", "Entrada:",       "--",                   "entrada_ok")
+        self.heartbeat_label= fila(1, "♥",  "Heartbeat:",     "Nunca",                "info_val")
+        fila(2, "🔇", "Umbral:",        f"{SILENCE_THRESH} dBFS")
+        fila(3, "⏱",  "Silencio mín:", f"{MIN_SILENCE_DURATION} s")
+        fila(4, "📡", "Heartbeat c/:", f"{HEARTBEAT_INTERVAL} s")
 
-        ctk.CTkLabel(info_frame, text="📡 Heartbeat c/:", font=NORMAL).grid(
-            row=4, column=0, sticky="w", padx=8, pady=4)
-        ctk.CTkLabel(
-            info_frame,
-            text=f"{HEARTBEAT_INTERVAL} s",
-            font=NORMAL_BOLD
-        ).grid(row=4, column=1, sticky="w", padx=8, pady=4)
+        layout.addWidget(info_frame)
+        layout.addSpacing(4)
 
-        # Log
-        ctk.CTkLabel(
-            self,
-            text="📋 Eventos",
-            font=SECCION
-        ).pack(pady=(15, 5))
+        # Log eventos
+        log_titulo = QLabel("▪ Eventos")
+        log_titulo.setObjectName("seccion")
+        log_titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(log_titulo)
 
-        self.log_text = ctk.CTkTextbox(self, font=LOG)
-        self.log_text.pack(fill="both", expand=True, padx=10, pady=(0, 15))
+        self.log_text = QPlainTextEdit()
+        self.log_text.setObjectName("log_box")
+        self.log_text.setReadOnly(True)
+        self.log_text.setFont(LOG)
+        layout.addWidget(self.log_text)
 
     # ========================
     # MÉTODOS PÚBLICOS
     # ========================
     def set_db(self, db):
-        self.entrada_label.configure(text="Line-In ✓")
-        self.db_label.configure(text=f"{db:.1f} dBFS")
+        self.entrada_label.setText("Line-In ✓")
+        self.db_label.setText(f"{db:.1f} dBFS")
 
         if db < SILENCE_THRESH:
             color = ROJO
@@ -104,19 +114,25 @@ class PanelMetricas(ctk.CTkFrame):
         else:
             color = VERDE
 
-        self.db_label.configure(text_color=color)
+        self.db_label.setStyleSheet(f"color: {color}; font-family: Consolas; font-size: 26px; font-weight: bold;")
 
-        norm = max(0.0, min(1.0, (db + 120) / 120))
-        self.barra_nivel.set(norm)
+        norm = max(0, min(1000, int((db + 120) / 120 * 1000)))
+        self.barra_nivel.setValue(norm)
 
     def set_heartbeat(self, ok):
         if ok:
             hora = datetime.now().strftime("%H:%M:%S")
-            self.heartbeat_label.configure(text=hora, text_color=VERDE)
+            self.heartbeat_label.setText(hora)
+            self.heartbeat_label.setObjectName("heartbeat_ok")
+            self.heartbeat_label.setStyleSheet("color: #00ff88; font-weight: bold;")
         else:
-            self.heartbeat_label.configure(text="Error", text_color=ROJO)
+            self.heartbeat_label.setText("Error !!")
+            self.heartbeat_label.setObjectName("heartbeat_error")
+            self.heartbeat_label.setStyleSheet("color: #e74c3c; font-weight: bold;")
 
     def add_log(self, mensaje):
         timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log_text.insert("end", f"[{timestamp}] {mensaje}\n")
-        self.log_text.see("end")
+        self.log_text.appendPlainText(f"[{timestamp}] {mensaje}")
+        self.log_text.verticalScrollBar().setValue(
+            self.log_text.verticalScrollBar().maximum()
+        )
